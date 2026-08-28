@@ -68,28 +68,28 @@ void mykey_calculate_encryption_key(MyKeyData* key) {
 
     // OTP calculation (reverse block 6 + 1, incremental. 1,2,3, etc.)
     uint32_t block6 = key->eeprom[0x06];
-    FURI_LOG_I(TAG, "Block 0x06 raw: 0x%08lX", block6);
+    FURI_LOG_I(TAG, "Block 0x06 raw: 0x%08lX", (unsigned long)block6);
 
     uint32_t block6_reversed = __bswap32(block6);
-    FURI_LOG_I(TAG, "Block 0x06 reversed: 0x%08lX", block6_reversed);
+    FURI_LOG_I(TAG, "Block 0x06 reversed: 0x%08lX", (unsigned long)block6_reversed);
 
     uint32_t otp = ~block6_reversed + 1;
-    FURI_LOG_I(TAG, "OTP (~reversed + 1): 0x%08lX", otp);
+    FURI_LOG_I(TAG, "OTP (~reversed + 1): 0x%08lX", (unsigned long)otp);
 
     // Encryption key calculation
     // MK = UID * VENDOR
     // SK (Encryption key) = MK * OTP
     uint32_t block18_raw = key->eeprom[0x18];
     uint32_t block19_raw = key->eeprom[0x19];
-    FURI_LOG_I(TAG, "Block 0x18 raw: 0x%08lX", block18_raw);
-    FURI_LOG_I(TAG, "Block 0x19 raw: 0x%08lX", block19_raw);
+    FURI_LOG_I(TAG, "Block 0x18 raw: 0x%08lX", (unsigned long)block18_raw);
+    FURI_LOG_I(TAG, "Block 0x19 raw: 0x%08lX", (unsigned long)block19_raw);
 
     uint32_t block18 = block18_raw;
     uint32_t block19 = block19_raw;
     encode_decode_block(&block18);
     encode_decode_block(&block19);
-    FURI_LOG_I(TAG, "Block 0x18 decoded: 0x%08lX", block18);
-    FURI_LOG_I(TAG, "Block 0x19 decoded: 0x%08lX", block19);
+    FURI_LOG_I(TAG, "Block 0x18 decoded: 0x%08lX", (unsigned long)block18);
+    FURI_LOG_I(TAG, "Block 0x19 decoded: 0x%08lX", (unsigned long)block19);
 
     uint64_t vendor = (((uint64_t)block18 << 16) | (block19 & 0x0000FFFF)) + 1;
     FURI_LOG_I(TAG, "Vendor: 0x%llX", vendor);
@@ -97,7 +97,7 @@ void mykey_calculate_encryption_key(MyKeyData* key) {
     // Calculate encryption key: UID * vendor * OTP
     // UID is now correctly stored in big-endian format, no swapping needed
     key->encryption_key = (key->uid * vendor * otp) & 0xFFFFFFFF;
-    FURI_LOG_I(TAG, "Encryption Key: 0x%08lX", key->encryption_key);
+    FURI_LOG_I(TAG, "Encryption Key: 0x%08lX", (unsigned long)key->encryption_key);
     FURI_LOG_I(TAG, "===================================");
 }
 
@@ -127,21 +127,21 @@ uint16_t mykey_get_current_credit(MyKeyData* key) {
 
     // Use libmikai approach: read from block 0x21
     uint32_t block21_raw = key->eeprom[0x21];
-    FURI_LOG_I(TAG, "Block 0x21 raw: 0x%08lX", block21_raw);
+    FURI_LOG_I(TAG, "Block 0x21 raw: 0x%08lX", (unsigned long)block21_raw);
     FURI_LOG_I(TAG, "  Bytes: [%02X %02X %02X %02X]",
         (uint8_t)(block21_raw & 0xFF),
         (uint8_t)((block21_raw >> 8) & 0xFF),
         (uint8_t)((block21_raw >> 16) & 0xFF),
         (uint8_t)((block21_raw >> 24) & 0xFF));
 
-    FURI_LOG_I(TAG, "Encryption key: 0x%08lX", key->encryption_key);
+    FURI_LOG_I(TAG, "Encryption key: 0x%08lX", (unsigned long)key->encryption_key);
 
     uint32_t after_xor = block21_raw ^ key->encryption_key;
-    FURI_LOG_I(TAG, "After XOR: 0x%08lX", after_xor);
+    FURI_LOG_I(TAG, "After XOR: 0x%08lX", (unsigned long)after_xor);
 
     uint32_t current_credit = after_xor;
     encode_decode_block(&current_credit);
-    FURI_LOG_I(TAG, "After encode_decode: 0x%08lX", current_credit);
+    FURI_LOG_I(TAG, "After encode_decode: 0x%08lX", (unsigned long)current_credit);
 
     uint16_t credit_lower = current_credit & 0xFFFF;
     uint16_t credit_upper = (current_credit >> 16) & 0xFFFF;
@@ -277,7 +277,7 @@ bool mykey_add_cents(MyKeyData* key, uint16_t cents, uint8_t day, uint8_t month,
     // Increment operation counter (block 0x12, lower 24 bits)
     uint32_t op_count = (key->eeprom[0x12] & 0x00FFFFFF) + 1;
     key->eeprom[0x12] = (key->eeprom[0x12] & 0xFF000000) | (op_count & 0x00FFFFFF);
-    FURI_LOG_I(TAG, "Operation counter incremented to: %lu", op_count);
+    FURI_LOG_I(TAG, "Operation counter incremented to: %lu", (unsigned long)op_count);
 
     // Mark as modified
     key->is_modified = true;
@@ -474,12 +474,12 @@ bool mykey_save_raw_data(COGSMyKaiApp* app, const char* path) {
     FuriString* line = furi_string_alloc();
     furi_string_printf(line, "MyKey Raw Data Dump\n");
     furi_string_cat_printf(line, "UID: %016llX\n", (unsigned long long)app->mykey.uid);
-    furi_string_cat_printf(line, "Encryption Key: 0x%08lX\n\n", app->mykey.encryption_key);
+    furi_string_cat_printf(line, "Encryption Key: 0x%08lX\n\n", (unsigned long)app->mykey.encryption_key);
     storage_file_write(file, furi_string_get_cstr(line), furi_string_size(line));
 
     // Write all blocks
     for(size_t i = 0; i < SRIX4K_BLOCKS; i++) {
-        furi_string_printf(line, "Block 0x%02zX: 0x%08lX\n", i, app->mykey.eeprom[i]);
+        furi_string_printf(line, "Block 0x%02zX: 0x%08lX\n", i, (unsigned long)app->mykey.eeprom[i]);
         storage_file_write(file, furi_string_get_cstr(line), furi_string_size(line));
     }
 

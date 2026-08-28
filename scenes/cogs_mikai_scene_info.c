@@ -12,7 +12,8 @@ void cogs_mikai_scene_info_on_enter(void* context) {
         furi_string_cat(text, "No Card Loaded\n\nPlease read a card first.");
     } else {
 
-        furi_string_cat_printf(text, "Serial: %08lX\n", (uint32_t)app->mykey.eeprom[0x07]);
+        furi_string_cat_printf(
+            text, "Serial: %08lX\n", (unsigned long)app->mykey.eeprom[0x07]);
 
         // vendor ID - calculated from blocks 0x18 and 0x19
         uint32_t block18 = app->mykey.eeprom[0x18];
@@ -41,8 +42,8 @@ void cogs_mikai_scene_info_on_enter(void* context) {
         furi_string_cat_printf(
             text,
             "UID: %08lX%08lX\n",
-            (uint32_t)(app->mykey.uid >> 32),
-            (uint32_t)(app->mykey.uid & 0xFFFFFFFF));
+            (unsigned long)(app->mykey.uid >> 32),
+            (unsigned long)(app->mykey.uid & 0xFFFFFFFF));
 
         // parse and display full transaction history
         uint32_t block3C = app->mykey.eeprom[0x3C];

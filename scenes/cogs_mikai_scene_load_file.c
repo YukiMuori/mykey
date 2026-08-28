@@ -40,6 +40,18 @@ static void cogs_mikai_scene_load_file_popup_callback(void* context) {
     view_dispatcher_send_custom_event(app->view_dispatcher, 0);
 }
 
+// Read one line (terminated by '\n') from the buffer pointed by *p.
+// Returns the line length and advances *p past the consumed characters.
+static bool read_line(char** p, char* buf, size_t max_len) {
+    size_t i = 0;
+    while(**p && **p != '\n' && i < max_len - 1) {
+        buf[i++] = *(*p)++;
+    }
+    buf[i] = '\0';
+    if(**p == '\n') (*p)++;
+    return i > 0;
+}
+
 void cogs_mikai_scene_load_file_on_enter(void* context) {
     COGSMyKaiApp* app = context;
     Popup* popup = app->popup;
@@ -77,17 +89,6 @@ void cogs_mikai_scene_load_file_on_enter(void* context) {
                     char* ptr = file_buffer;
                     char line[128];
 
-                    // Helper to read next line
-                    auto bool read_line(char** p, char* buf, size_t max_len) {
-                        size_t i = 0;
-                        while(**p && **p != '\n' && i < max_len - 1) {
-                            buf[i++] = *(*p)++;
-                        }
-                        buf[i] = '\0';
-                        if(**p == '\n') (*p)++;
-                        return i > 0;
-                    };
-
                     // Skip header line
                     read_line(&ptr, line, sizeof(line));
 
@@ -95,13 +96,13 @@ void cogs_mikai_scene_load_file_on_enter(void* context) {
                     if(read_line(&ptr, line, sizeof(line))) {
                         char* uid_str = strstr(line, "UID: ");
                         if(uid_str && parse_hex64(uid_str + 5, &app->mykey.uid)) {
-                            FURI_LOG_I(TAG, "Loaded UID: %016llX", app->mykey.uid);
+                            FURI_LOG_I(TAG, "Loaded UID: %016llX", (unsigned long long)app->mykey.uid);
 
                             // Read encryption key
                             if(read_line(&ptr, line, sizeof(line))) {
                                 char* key_str = strstr(line, "ENCRYPTION_KEY: ");
                                 if(key_str && parse_hex32(key_str + 16, &app->mykey.encryption_key)) {
-                                    FURI_LOG_I(TAG, "Loaded key: %08lX", app->mykey.encryption_key);
+                                    FURI_LOG_I(TAG, "Loaded key: %08lX", (unsigned long)app->mykey.encryption_key);
                                     success = true;
 
                                     // Read blocks
