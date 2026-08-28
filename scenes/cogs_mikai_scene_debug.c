@@ -25,17 +25,17 @@ void cogs_mikai_scene_debug_on_enter(void* context) {
 
         // lower 32 bits of UID
         furi_string_cat_printf(
-            text, "UID (lower 32): 0x%08lX\n", (uint32_t)app->mykey.uid);
+            text, "UID (lower 32): 0x%08lX\n", (unsigned long)(uint32_t)app->mykey.uid);
 
         // encryption key
 
         furi_string_cat_printf(
-            text, "Encryption Key: 0x%08lX\n\n", app->mykey.encryption_key);
+            text, "Encryption Key: 0x%08lX\n\n", (unsigned long)app->mykey.encryption_key);
 
         // block 0x21 (credit block) analysis
         furi_string_cat(text, "--- Block 0x21 Analysis ---\n");
         uint32_t block21_raw = app->mykey.eeprom[0x21];
-        furi_string_cat_printf(text, "Raw: 0x%08lX\n", block21_raw);
+        furi_string_cat_printf(text, "Raw: 0x%08lX\n", (unsigned long)block21_raw);
 
         // show individual bytes
         furi_string_cat_printf(text, "Bytes: [%02X %02X %02X %02X]\n",
@@ -99,14 +99,14 @@ void cogs_mikai_scene_debug_on_enter(void* context) {
 
         // key blocks
         furi_string_cat(text, "--- Key Blocks ---\n");
-        furi_string_cat_printf(text, "Block 0x05: 0x%08lX\n", app->mykey.eeprom[0x05]);
-        furi_string_cat_printf(text, "Block 0x06: 0x%08lX\n", app->mykey.eeprom[0x06]);
-        furi_string_cat_printf(text, "Block 0x07: 0x%08lX\n", app->mykey.eeprom[0x07]);
-        furi_string_cat_printf(text, "Block 0x12: 0x%08lX\n", app->mykey.eeprom[0x12]);
-        furi_string_cat_printf(text, "Block 0x18: 0x%08lX\n", app->mykey.eeprom[0x18]);
-        furi_string_cat_printf(text, "Block 0x19: 0x%08lX\n", app->mykey.eeprom[0x19]);
-        furi_string_cat_printf(text, "Block 0x21: 0x%08lX\n", app->mykey.eeprom[0x21]);
-        furi_string_cat_printf(text, "Block 0x3C: 0x%08lX\n\n", app->mykey.eeprom[0x3C]);
+        furi_string_cat_printf(text, "Block 0x05: 0x%08lX\n", (unsigned long)app->mykey.eeprom[0x05]);
+        furi_string_cat_printf(text, "Block 0x06: 0x%08lX\n", (unsigned long)app->mykey.eeprom[0x06]);
+        furi_string_cat_printf(text, "Block 0x07: 0x%08lX\n", (unsigned long)app->mykey.eeprom[0x07]);
+        furi_string_cat_printf(text, "Block 0x12: 0x%08lX\n", (unsigned long)app->mykey.eeprom[0x12]);
+        furi_string_cat_printf(text, "Block 0x18: 0x%08lX\n", (unsigned long)app->mykey.eeprom[0x18]);
+        furi_string_cat_printf(text, "Block 0x19: 0x%08lX\n", (unsigned long)app->mykey.eeprom[0x19]);
+        furi_string_cat_printf(text, "Block 0x21: 0x%08lX\n", (unsigned long)app->mykey.eeprom[0x21]);
+        furi_string_cat_printf(text, "Block 0x3C: 0x%08lX\n\n", (unsigned long)app->mykey.eeprom[0x3C]);
 
         furi_string_cat(text, "\n--- Raw data saved in SD ---\n");
         furi_string_cat(text, "Use back to exit, or\n");
@@ -145,7 +145,7 @@ void cogs_mikai_scene_debug_on_enter(void* context) {
 
             FuriString* line = furi_string_alloc();
             for(size_t i = 0; i < SRIX4K_BLOCKS; i++) {
-                furi_string_printf(line, "Block 0x%02zX: 0x%08lX\n", i, app->mykey.eeprom[i]);
+                furi_string_printf(line, "Block 0x%02zX: 0x%08lX\n", i, (unsigned long)app->mykey.eeprom[i]);
                 storage_file_write(file, furi_string_get_cstr(line), furi_string_size(line));
             }
             furi_string_free(line);

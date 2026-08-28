@@ -104,11 +104,11 @@ bool cogs_mikai_scene_save_file_on_event(void* context, SceneManagerEvent event)
                 furi_string_printf(line, "UID: %016llX\n", app->mykey.uid);
                 storage_file_write(file, furi_string_get_cstr(line), furi_string_size(line));
 
-                furi_string_printf(line, "ENCRYPTION_KEY: %08lX\n", app->mykey.encryption_key);
+                furi_string_printf(line, "ENCRYPTION_KEY: %08lX\n", (unsigned long)app->mykey.encryption_key);
                 storage_file_write(file, furi_string_get_cstr(line), furi_string_size(line));
 
                 for(size_t i = 0; i < SRIX4K_BLOCKS; i++) {
-                    furi_string_printf(line, "BLOCK_%03zu: %08lX\n", i, app->mykey.eeprom[i]);
+                    furi_string_printf(line, "BLOCK_%03zu: %08lX\n", i, (unsigned long)app->mykey.eeprom[i]);
                     storage_file_write(file, furi_string_get_cstr(line), furi_string_size(line));
                 }
 
