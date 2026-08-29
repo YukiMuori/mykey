@@ -29,14 +29,14 @@ void cogs_mikai_scene_read_on_enter(void* context) {
 
     // Make sure no stale worker is running (defensive: on_exit cleans it up)
     if(app->read_thread) {
-        app->read_abort = true;
+        app->op_abort = true;
         furi_thread_join(app->read_thread);
         furi_thread_free(app->read_thread);
         app->read_thread = NULL;
     }
 
     // Reset read state
-    app->read_abort = false;
+    app->op_abort = false;
     app->read_result = MyKeyReadResultNoCard;
 
     // Show popup while waiting for the card. No timeout and no callback:
@@ -123,7 +123,13 @@ bool cogs_mikai_scene_read_on_event(void* context, SceneManagerEvent event) {
 
             consumed = true;
         } else if(event.event == ReadSceneEventClose) {
-            scene_manager_previous_scene(app->scene_manager);
+            if(app->read_result == MyKeyReadResultOk) {
+                // Card loaded: jump straight to View Info so the user can
+                // check the credit without going back through the menu
+                scene_manager_next_scene(app->scene_manager, COGSMyKaiSceneInfo);
+            } else {
+                scene_manager_previous_scene(app->scene_manager);
+            }
             consumed = true;
         }
     }
@@ -138,7 +144,7 @@ void cogs_mikai_scene_read_on_exit(void* context) {
     // while the app was waiting for a card). The worker checks the abort
     // flag between detection attempts, so the join is quick.
     if(app->read_thread) {
-        app->read_abort = true;
+        app->op_abort = true;
         furi_thread_join(app->read_thread);
         furi_thread_free(app->read_thread);
         app->read_thread = NULL;

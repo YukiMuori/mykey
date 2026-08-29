@@ -138,15 +138,25 @@ bool cogs_mikai_scene_set_credit_on_event(void* context, SceneManagerEvent event
                     text_input_reset(app->text_input);
 
                     memset(app->text_buffer, 0, sizeof(app->text_buffer));
-                    Popup* popup = app->popup;
-                    popup_set_header(popup, "Credit Set!", 64, 10, AlignCenter, AlignTop);
-                    popup_set_text(popup, "Saved in memory\nUse 'Write to Card'", 64, 25, AlignCenter, AlignTop);
-                    popup_set_callback(popup, cogs_mikai_scene_set_credit_popup_callback);
-                    popup_set_context(popup, app);
-                    popup_set_timeout(popup, 1000);
-                    popup_enable_timeout(popup);
-                    view_dispatcher_switch_to_view(app->view_dispatcher, COGSMyKaiViewPopup);
                     notification_message(app->notifications, &sequence_success);
+
+                    // Ask whether to write to the card right away
+                    DialogMessage* message = dialog_message_alloc();
+                    dialog_message_set_header(message, "Credit Set!", 64, 0, AlignCenter, AlignTop);
+                    dialog_message_set_text(message, "Write to card now?", 64, 28, AlignCenter, AlignTop);
+                    dialog_message_set_buttons(message, "Later", NULL, "Write");
+                    DialogMessageButton button = dialog_message_show(app->dialogs, message);
+                    dialog_message_free(message);
+
+                    if(button == DialogMessageButtonRight) {
+                        // Write immediately: the write scene waits for the card
+                        scene_manager_next_scene(
+                            app->scene_manager, COGSMyKaiSceneWriteCard);
+                    } else {
+                        // Back to menu; "Write to Card" is available there
+                        scene_manager_search_and_switch_to_previous_scene(
+                            app->scene_manager, COGSMyKaiSceneStart);
+                    }
                 } else {
                     Popup* popup = app->popup;
                     popup_set_header(popup, "Error", 64, 10, AlignCenter, AlignTop);

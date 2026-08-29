@@ -64,12 +64,18 @@ static COGSMyKaiApp* cogs_mikai_app_alloc() {
 static void cogs_mikai_app_free(COGSMyKaiApp* app) {
     furi_assert(app);
 
-    // Stop the Read Card worker if it is still running
+    // Stop the Read/Write workers if they are still running
     if(app->read_thread) {
-        app->read_abort = true;
+        app->op_abort = true;
         furi_thread_join(app->read_thread);
         furi_thread_free(app->read_thread);
         app->read_thread = NULL;
+    }
+    if(app->write_thread) {
+        app->op_abort = true;
+        furi_thread_join(app->write_thread);
+        furi_thread_free(app->write_thread);
+        app->write_thread = NULL;
     }
 
     // Remove views

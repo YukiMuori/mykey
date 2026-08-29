@@ -83,10 +83,12 @@ typedef struct {
     char text_buffer[32];
     uint32_t temp_credit_value;
 
-    // Read Card worker (keeps the UI responsive while the NFC read is running)
+    // Read/write workers (keep the UI responsive while NFC operations run)
     FuriThread* read_thread;
-    volatile bool read_abort;
+    FuriThread* write_thread;
+    volatile bool op_abort;
     MyKeyReadResult read_result;
+    bool write_result;
 } COGSMyKaiApp;
 
 // Scene handler function declarations
