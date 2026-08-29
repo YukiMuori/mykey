@@ -55,6 +55,17 @@ typedef struct {
     uint16_t current_credit;
 } MyKeyData;
 
+// Result of a Read Card operation. Used to show the user a proper
+// error message instead of crashing or displaying fake crash text.
+typedef enum {
+    MyKeyReadResultOk = 0,
+    MyKeyReadResultNoCard,          // No card detected within the timeout
+    MyKeyReadResultUnsupportedCard, // Card detected, but not SRIX4K-compatible
+    MyKeyReadResultReadFailed,      // Card detected, but the read failed
+    MyKeyReadResultNfcBusy,         // NFC hardware not available
+    MyKeyReadResultAborted,         // Operation cancelled by the user
+} MyKeyReadResult;
+
 typedef struct {
     Gui* gui;
     ViewDispatcher* view_dispatcher;
@@ -70,7 +81,12 @@ typedef struct {
 
     MyKeyData mykey;
     char text_buffer[32];
-    uint32_t temp_credit_value; 
+    uint32_t temp_credit_value;
+
+    // Read Card worker (keeps the UI responsive while the NFC read is running)
+    FuriThread* read_thread;
+    volatile bool read_abort;
+    MyKeyReadResult read_result;
 } COGSMyKaiApp;
 
 // Scene handler function declarations
@@ -122,7 +138,7 @@ void cogs_mikai_scene_about_on_exit(void* context);
 extern const SceneManagerHandlers cogs_mikai_scene_handlers;
 
 // MyKey operations
-bool mykey_read_from_nfc(COGSMyKaiApp* app);
+MyKeyReadResult mykey_read_from_nfc(COGSMyKaiApp* app);
 bool mykey_write_to_nfc(COGSMyKaiApp* app);
 void mykey_calculate_encryption_key(MyKeyData* key);
 bool mykey_is_reset(MyKeyData* key);

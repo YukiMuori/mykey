@@ -1,46 +1,96 @@
 #include "cogs_mikai.h"
 #include <furi.h>
 #include <machine/endian.h>
+#include <furi_hal_nfc.h>
 #include <nfc/nfc.h>
 #include <nfc/protocols/st25tb/st25tb.h>
 #include <nfc/protocols/st25tb/st25tb_poller_sync.h>
 
-bool mykey_read_from_nfc(COGSMyKaiApp* app) {
+// How long to keep waiting for the card to be placed on the reader
+#define MYKEY_READ_DETECT_TIMEOUT_MS (30000U)
+// Delay between detection attempts while waiting for the card
+#define MYKEY_READ_DETECT_RETRY_DELAY_MS (150U)
+// Number of full card read attempts before giving up
+#define MYKEY_READ_MAX_ATTEMPTS (3U)
+
+MyKeyReadResult mykey_read_from_nfc(COGSMyKaiApp* app) {
     FURI_LOG_I(TAG, "Reading SRIX4K from NFC...");
 
-    bool success = false;
+    // nfc_alloc() would crash the app (furi_check) if the NFC hardware is
+    // busy, so check availability first and report a clean error instead.
+    if(furi_hal_nfc_acquire() != FuriHalNfcErrorNone) {
+        FURI_LOG_E(TAG, "NFC hardware is busy");
+        return MyKeyReadResultNfcBusy;
+    }
+    furi_hal_nfc_release();
+
     Nfc* nfc = nfc_alloc();
 
-    // Detect ST25TB card type
+    // Phase 1: wait for a card to be placed on the reader.
+    // st25tb_poller_sync_detect_type() performs a single detection attempt, so
+    // retry until the card shows up, the user cancels or the timeout expires.
     St25tbType type;
-    St25tbError error = st25tb_poller_sync_detect_type(nfc, &type);
+    St25tbError error = St25tbErrorNotPresent;
+    uint32_t start_tick = furi_get_tick();
+
+    while(furi_get_tick() - start_tick < furi_ms_to_ticks(MYKEY_READ_DETECT_TIMEOUT_MS)) {
+        if(app->read_abort) {
+            FURI_LOG_I(TAG, "Read aborted by user");
+            nfc_free(nfc);
+            return MyKeyReadResultAborted;
+        }
+
+        error = st25tb_poller_sync_detect_type(nfc, &type);
+        if(error == St25tbErrorNone) {
+            break;
+        }
+
+        FURI_LOG_D(TAG, "Card not detected yet (error: %d), retrying...", error);
+        furi_delay_ms(MYKEY_READ_DETECT_RETRY_DELAY_MS);
+    }
 
     if(error != St25tbErrorNone) {
-        FURI_LOG_E(TAG, "Failed to detect ST25TB card: %d", error);
+        FURI_LOG_E(
+            TAG,
+            "No ST25TB card detected within %u ms",
+            MYKEY_READ_DETECT_TIMEOUT_MS);
         nfc_free(nfc);
-        return false;
+        return app->read_abort ? MyKeyReadResultAborted : MyKeyReadResultNoCard;
     }
 
     // Check if it's SRIX4K (ST25TBX512 or ST25TB04K or ST25TBX4K)
     if(type != St25tbTypeX512 && type != St25tbType04k && type != St25tbTypeX4k) {
         FURI_LOG_E(TAG, "Card is not SRIX4K compatible, type: %d", type);
         nfc_free(nfc);
-        return false;
+        return MyKeyReadResultUnsupportedCard;
     }
 
     FURI_LOG_I(TAG, "Detected ST25TB card type: %d", type);
 
-    // Allocate ST25TB data structure
+    // Phase 2: read the entire card.
+    // Retry a few times in case the card is removed or the link is flaky.
     St25tbData* st25tb_data = st25tb_alloc();
+    bool read_ok = false;
 
-    // Read entire card
-    error = st25tb_poller_sync_read(nfc, st25tb_data);
+    for(uint8_t attempt = 0; attempt < MYKEY_READ_MAX_ATTEMPTS && !read_ok; attempt++) {
+        if(app->read_abort) {
+            break;
+        }
 
-    if(error != St25tbErrorNone) {
-        FURI_LOG_E(TAG, "Failed to read ST25TB card: %d", error);
+        error = st25tb_poller_sync_read(nfc, st25tb_data);
+        if(error == St25tbErrorNone) {
+            read_ok = true;
+        } else {
+            FURI_LOG_W(TAG, "Read attempt %u failed: %d", attempt + 1, error);
+            furi_delay_ms(100);
+        }
+    }
+
+    if(!read_ok) {
+        FURI_LOG_E(TAG, "Failed to read ST25TB card");
         st25tb_free(st25tb_data);
         nfc_free(nfc);
-        return false;
+        return app->read_abort ? MyKeyReadResultAborted : MyKeyReadResultReadFailed;
     }
 
     // Extract UID (8 bytes for ST25TB)
@@ -84,12 +134,10 @@ bool mykey_read_from_nfc(COGSMyKaiApp* app) {
                app->mykey.current_credit,
                app->mykey.is_reset ? "Yes" : "No");
 
-    success = true;
-
     st25tb_free(st25tb_data);
     nfc_free(nfc);
 
-    return success;
+    return MyKeyReadResultOk;
 }
 
 bool mykey_write_to_nfc(COGSMyKaiApp* app) {
