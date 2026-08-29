@@ -32,7 +32,7 @@ void cogs_mikai_scene_reset_on_enter(void* context) {
     popup_set_text(popup, "Reset in memory\nUse 'Write to Card'", 64, 25, AlignCenter, AlignTop);
     popup_set_callback(popup, cogs_mikai_scene_reset_popup_callback);
     popup_set_context(popup, app);
-    popup_set_timeout(popup, 2000);
+    popup_set_timeout(popup, 1000);
     popup_enable_timeout(popup);
     view_dispatcher_switch_to_view(app->view_dispatcher, COGSMyKaiViewPopup);
     notification_message(app->notifications, &sequence_success);

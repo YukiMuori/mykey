@@ -144,15 +144,18 @@ void cogs_mikai_scene_load_file_on_enter(void* context) {
                 popup_set_header(popup, "Success!", 64, 10, AlignCenter, AlignTop);
                 popup_set_text(popup, "Card loaded from file", 64, 25, AlignCenter, AlignTop);
                 notification_message(app->notifications, &sequence_success);
+                popup_set_timeout(popup, 1000);
             } else {
                 popup_set_header(popup, "Error", 64, 10, AlignCenter, AlignTop);
                 popup_set_text(popup, "Invalid file format", 64, 25, AlignCenter, AlignTop);
                 notification_message(app->notifications, &sequence_error);
+                popup_set_timeout(popup, 2000);
             }
         } else {
             popup_set_header(popup, "Error", 64, 10, AlignCenter, AlignTop);
             popup_set_text(popup, "Failed to open file", 64, 25, AlignCenter, AlignTop);
             notification_message(app->notifications, &sequence_error);
+            popup_set_timeout(popup, 2000);
         }
 
         storage_file_free(file);
@@ -168,7 +171,6 @@ void cogs_mikai_scene_load_file_on_enter(void* context) {
 
     popup_set_callback(popup, cogs_mikai_scene_load_file_popup_callback);
     popup_set_context(popup, app);
-    popup_set_timeout(popup, 2000);
     popup_enable_timeout(popup);
     view_dispatcher_switch_to_view(app->view_dispatcher, COGSMyKaiViewPopup);
 }

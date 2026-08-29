@@ -152,7 +152,7 @@ bool cogs_mikai_scene_add_credit_on_event(void* context, SceneManagerEvent event
                     popup_set_text(popup, "Saved in memory\nUse 'Write to Card'", 64, 25, AlignCenter, AlignTop);
                     popup_set_callback(popup, cogs_mikai_scene_add_credit_popup_callback);
                     popup_set_context(popup, app);
-                    popup_set_timeout(popup, 2000);
+                    popup_set_timeout(popup, 1000);
                     popup_enable_timeout(popup);
                     view_dispatcher_switch_to_view(app->view_dispatcher, COGSMyKaiViewPopup);
                     notification_message(app->notifications, &sequence_success);

@@ -126,18 +126,19 @@ bool cogs_mikai_scene_save_file_on_event(void* context, SceneManagerEvent event)
                 popup_set_text(popup, "File saved to\napps_data/cogs_mikai/", 64, 25, AlignCenter, AlignTop);
                 notification_message(app->notifications, &sequence_success);
                 FURI_LOG_I(TAG, "File saved: %s", furi_string_get_cstr(file_path));
+                popup_set_timeout(popup, 1000);
             } else {
                 popup_set_header(popup, "Error", 64, 10, AlignCenter, AlignTop);
                 popup_set_text(popup, "Failed to create file", 64, 25, AlignCenter, AlignTop);
                 notification_message(app->notifications, &sequence_error);
                 FURI_LOG_E(TAG, "Failed to save file: %s", furi_string_get_cstr(file_path));
+                popup_set_timeout(popup, 2000);
             }
 
             furi_string_free(file_path);
 
             popup_set_callback(popup, cogs_mikai_scene_save_file_popup_callback);
             popup_set_context(popup, app);
-            popup_set_timeout(popup, 3000);
             popup_enable_timeout(popup);
             view_dispatcher_switch_to_view(app->view_dispatcher, COGSMyKaiViewPopup);
 

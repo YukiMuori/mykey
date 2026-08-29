@@ -46,13 +46,13 @@ void cogs_mikai_scene_write_card_on_enter(void* context) {
         popup_set_header(popup, "Success!", 64, 10, AlignCenter, AlignTop);
         popup_set_text(popup, "Card updated", 64, 25, AlignCenter, AlignTop);
         notification_message(app->notifications, &sequence_success);
+        popup_set_timeout(popup, 1000);
     } else {
         popup_set_header(popup, "Error", 64, 10, AlignCenter, AlignTop);
         popup_set_text(popup, "Write failed\nTry again", 64, 25, AlignCenter, AlignTop);
         notification_message(app->notifications, &sequence_error);
+        popup_set_timeout(popup, 2000);
     }
-
-    popup_set_timeout(popup, 2000);
     popup_enable_timeout(popup);
 }
 

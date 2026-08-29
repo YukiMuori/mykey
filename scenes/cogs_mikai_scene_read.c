@@ -65,9 +65,14 @@ bool cogs_mikai_scene_read_on_event(void* context, SceneManagerEvent event) {
         if(event.event == ReadSceneEventResult) {
             Popup* popup = app->popup;
 
+            // Success confirmation is brief (1 s); errors stay on screen
+            // longer so the user has time to read them.
+            uint32_t result_timeout_ms = 2000;
+
             // Show the outcome of the read operation
             switch(app->read_result) {
             case MyKeyReadResultOk:
+                result_timeout_ms = 1000;
                 popup_set_header(popup, "Success!", 64, 10, AlignCenter, AlignTop);
                 popup_set_text(popup, "Card read successfully", 64, 25, AlignCenter, AlignTop);
                 notification_message(app->notifications, &sequence_success);
@@ -112,7 +117,7 @@ bool cogs_mikai_scene_read_on_event(void* context, SceneManagerEvent event) {
             // also dismisses the popup.
             popup_set_callback(popup, cogs_mikai_scene_read_popup_callback);
             popup_set_context(popup, app);
-            popup_set_timeout(popup, 2500);
+            popup_set_timeout(popup, result_timeout_ms);
             popup_enable_timeout(popup);
             view_dispatcher_switch_to_view(app->view_dispatcher, COGSMyKaiViewPopup);
 
