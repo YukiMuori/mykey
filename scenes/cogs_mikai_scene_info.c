@@ -2,19 +2,23 @@
 #include <machine/endian.h>
 
 typedef enum {
-    InfoSceneEventAddCredit = 1,
+    InfoSceneEventMenu = 1,      // Left key: back to main menu (card stays loaded)
+    InfoSceneEventAddCredit = 2, // Right key: open Add Credit
 } InfoSceneEvent;
 
-// Called when the "Add Credit" button (right key) is pressed
+// Called when the "Menu" (left key) or "Add Credit" (right key) button is pressed
 static void cogs_mikai_scene_info_button_callback(
     GuiButtonType result,
     InputType type,
     void* context) {
-    UNUSED(result);
     COGSMyKaiApp* app = context;
 
     if(type == InputTypeShort) {
-        view_dispatcher_send_custom_event(app->view_dispatcher, InfoSceneEventAddCredit);
+        if(result == GuiButtonTypeLeft) {
+            view_dispatcher_send_custom_event(app->view_dispatcher, InfoSceneEventMenu);
+        } else if(result == GuiButtonTypeRight) {
+            view_dispatcher_send_custom_event(app->view_dispatcher, InfoSceneEventAddCredit);
+        }
     }
 }
 
@@ -116,13 +120,21 @@ void cogs_mikai_scene_info_on_enter(void* context) {
         }
     }
 
-    // Show the info as a scrollable text; with a card loaded, a
-    // "Add Credit" button appears at the bottom right (right key)
+    // Show the info as a scrollable text. With a card loaded, two buttons
+    // appear at the bottom: "Menu" (left key) returns to the main menu
+    // with the card still loaded (Set Credit, Reset, Save, Debug, ...),
+    // "Add Credit" (right key) goes straight to the amount selection.
     Widget* widget = app->widget;
     widget_reset(widget);
 
     if(app->mykey.is_loaded) {
         widget_add_text_scroll_element(widget, 0, 0, 128, 50, furi_string_get_cstr(text));
+        widget_add_button_element(
+            widget,
+            GuiButtonTypeLeft,
+            "Menu",
+            cogs_mikai_scene_info_button_callback,
+            app);
         widget_add_button_element(
             widget,
             GuiButtonTypeRight,
@@ -140,11 +152,29 @@ bool cogs_mikai_scene_info_on_event(void* context, SceneManagerEvent event) {
     COGSMyKaiApp* app = context;
     bool consumed = false;
 
-    if(event.type == SceneManagerEventTypeCustom && event.event == InfoSceneEventAddCredit) {
-        if(app->mykey.is_loaded) {
-            scene_manager_next_scene(app->scene_manager, COGSMyKaiSceneAddCredit);
+    if(event.type == SceneManagerEventTypeCustom) {
+        if(event.event == InfoSceneEventAddCredit) {
+            if(app->mykey.is_loaded) {
+                scene_manager_next_scene(app->scene_manager, COGSMyKaiSceneAddCredit);
+                consumed = true;
+            }
+        } else if(event.event == InfoSceneEventMenu) {
+            // Back to the main menu, card stays loaded: all functions
+            // (Set Credit, Reset, Save, Debug, ...) remain available
+            scene_manager_search_and_switch_to_previous_scene(
+                app->scene_manager, COGSMyKaiSceneStart);
             consumed = true;
         }
+    } else if(event.type == SceneManagerEventTypeBack) {
+        if(app->mykey.is_loaded) {
+            // Same as the left button: skip the Read scene still in the
+            // stack (it would restart the read) and go to the menu
+            scene_manager_search_and_switch_to_previous_scene(
+                app->scene_manager, COGSMyKaiSceneStart);
+        } else {
+            scene_manager_previous_scene(app->scene_manager);
+        }
+        consumed = true;
     }
 
     return consumed;
