@@ -28,6 +28,8 @@ static void cogs_mikai_scene_write_card_popup_callback(void* context) {
 static void cogs_mikai_scene_write_card_start_worker(COGSMyKaiApp* app) {
     app->op_abort = false;
     app->write_result = MyKeyWriteResultNoCard;
+    app->write_verify_total = 0;
+    app->write_verify_ok = 0;
 
     app->write_thread = furi_thread_alloc_ex(
         "MyKeyWriteWorker", 8 * 1024, cogs_mikai_scene_write_card_worker, app);
@@ -102,9 +104,38 @@ bool cogs_mikai_scene_write_card_on_event(void* context, SceneManagerEvent event
             case MyKeyWriteResultOk:
                 app->mykey.is_modified = false;
                 popup_set_header(popup, "Success!", 64, 10, AlignCenter, AlignTop);
-                popup_set_text(popup, "Card updated", 64, 25, AlignCenter, AlignTop);
+                // Show the resulting balance (and the verification result
+                // when the read-back check ran)
+                snprintf(
+                    app->text_buffer,
+                    sizeof(app->text_buffer),
+                    "Card updated\nCredit: %u.%02u EUR",
+                    app->mykey.current_credit / 100,
+                    app->mykey.current_credit % 100);
+                if(app->write_verify_total > 0) {
+                    snprintf(
+                        app->text_buffer + strlen(app->text_buffer),
+                        sizeof(app->text_buffer) - strlen(app->text_buffer),
+                        "\nVerify: %u/%u blocks OK",
+                        app->write_verify_ok,
+                        app->write_verify_total);
+                }
+                popup_set_text(popup, app->text_buffer, 64, 20, AlignCenter, AlignTop);
                 notification_message(app->notifications, &sequence_success);
                 popup_set_timeout(popup, 1000);
+                break;
+
+            case MyKeyWriteResultVerifyFailed:
+                popup_set_header(popup, "Error", 64, 10, AlignCenter, AlignTop);
+                snprintf(
+                    app->text_buffer,
+                    sizeof(app->text_buffer),
+                    "Verify failed\n%u/%u blocks OK\nRetry write",
+                    app->write_verify_ok,
+                    app->write_verify_total);
+                popup_set_text(popup, app->text_buffer, 64, 20, AlignCenter, AlignTop);
+                notification_message(app->notifications, &sequence_error);
+                popup_set_timeout(popup, 2000);
                 break;
 
             case MyKeyWriteResultUidMismatch: {

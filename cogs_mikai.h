@@ -39,6 +39,7 @@ typedef enum {
     COGSMyKaiSceneSetCredit,
     COGSMyKaiSceneReset,
     COGSMyKaiSceneSaveFile,
+    COGSMyKaiSceneExportHistory,
     COGSMyKaiSceneLoadFile,
     COGSMyKaiSceneDebug,
     COGSMyKaiSceneAbout,
@@ -73,6 +74,7 @@ typedef enum {
     MyKeyWriteResultUnsupportedCard, // Card detected, but not SRIX4K-compatible
     MyKeyWriteResultUidMismatch,     // Card on reader differs from the loaded one
     MyKeyWriteResultWriteFailed,     // Card detected, but the write failed
+    MyKeyWriteResultVerifyFailed,    // Write ok, but read-back verification failed
     MyKeyWriteResultNfcBusy,         // NFC hardware not available
     MyKeyWriteResultAborted,         // Operation cancelled by the user
 } MyKeyWriteResult;
@@ -91,7 +93,7 @@ typedef struct {
     NotificationApp* notifications;
 
     MyKeyData mykey;
-    char text_buffer[32];
+    char text_buffer[128];
     uint32_t temp_credit_value;
 
     // Read/write workers (keep the UI responsive while NFC operations run)
@@ -101,6 +103,8 @@ typedef struct {
     MyKeyReadResult read_result;
     MyKeyWriteResult write_result;
     bool write_force; // Skip the UID mismatch check (user confirmed the write)
+    uint16_t write_verify_ok;    // Post-write verification: matching blocks
+    uint16_t write_verify_total; // Post-write verification: total blocks checked
 } COGSMyKaiApp;
 
 // Scene handler function declarations
@@ -135,6 +139,10 @@ void cogs_mikai_scene_write_card_on_exit(void* context);
 void cogs_mikai_scene_save_file_on_enter(void* context);
 bool cogs_mikai_scene_save_file_on_event(void* context, SceneManagerEvent event);
 void cogs_mikai_scene_save_file_on_exit(void* context);
+
+void cogs_mikai_scene_export_history_on_enter(void* context);
+bool cogs_mikai_scene_export_history_on_event(void* context, SceneManagerEvent event);
+void cogs_mikai_scene_export_history_on_exit(void* context);
 
 void cogs_mikai_scene_load_file_on_enter(void* context);
 bool cogs_mikai_scene_load_file_on_event(void* context, SceneManagerEvent event);

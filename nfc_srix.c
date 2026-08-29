@@ -255,8 +255,47 @@ MyKeyWriteResult mykey_write_to_nfc(COGSMyKaiApp* app) {
 
     if(success) {
         FURI_LOG_I(TAG, "Card written successfully");
+
+        // Post-write verification: re-read the card and compare every
+        // written block. Report the counts so the UI can show
+        // "X/Y blocks OK" (or a clear error if the data did not stick).
+        St25tbData* verify_data = st25tb_alloc();
+        error = st25tb_poller_sync_read(nfc, verify_data);
+
+        if(error == St25tbErrorNone) {
+            size_t ok_count = 0;
+            size_t total_count = 0;
+            for(size_t i = 1; i < num_blocks; i++) {
+                total_count++;
+                if(__bswap32(verify_data->blocks[i]) == app->mykey.eeprom[i]) {
+                    ok_count++;
+                }
+            }
+
+            app->write_verify_total = total_count;
+            app->write_verify_ok = ok_count;
+
+            FURI_LOG_I(
+                TAG, "Verification: %zu/%zu blocks match", ok_count, total_count);
+
+            if(ok_count != total_count) {
+                FURI_LOG_E(TAG, "Verification FAILED: %zu/%zu blocks match", ok_count, total_count);
+                st25tb_free(verify_data);
+                nfc_free(nfc);
+                return MyKeyWriteResultVerifyFailed;
+            }
+        } else {
+            FURI_LOG_W(TAG, "Verification read failed: %d", error);
+            // Verification not possible; the write itself succeeded
+            app->write_verify_total = 0;
+            app->write_verify_ok = 0;
+        }
+
+        st25tb_free(verify_data);
     } else {
         FURI_LOG_W(TAG, "Card write completed with errors");
+        app->write_verify_total = 0;
+        app->write_verify_ok = 0;
     }
 
     nfc_free(nfc);

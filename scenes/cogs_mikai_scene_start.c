@@ -8,6 +8,7 @@ typedef enum {
     SubmenuIndexSetCredit,
     SubmenuIndexReset,
     SubmenuIndexSaveFile,
+    SubmenuIndexExportHistory,
     SubmenuIndexLoadFile,
     SubmenuIndexDebug,
     SubmenuIndexAbout,
@@ -83,6 +84,13 @@ void cogs_mikai_scene_start_on_enter(void* context) {
 
     submenu_add_item(
         submenu,
+        "Export History (CSV)",
+        SubmenuIndexExportHistory,
+        cogs_mikai_scene_start_submenu_callback,
+        app);
+
+    submenu_add_item(
+        submenu,
         "Load from File",
         SubmenuIndexLoadFile,
         cogs_mikai_scene_start_submenu_callback,
@@ -136,6 +144,9 @@ bool cogs_mikai_scene_start_on_event(void* context, SceneManagerEvent event) {
                 break;
             case SubmenuIndexSaveFile:
                 scene_manager_next_scene(app->scene_manager, COGSMyKaiSceneSaveFile);
+                break;
+            case SubmenuIndexExportHistory:
+                scene_manager_next_scene(app->scene_manager, COGSMyKaiSceneExportHistory);
                 break;
             case SubmenuIndexLoadFile:
                 scene_manager_next_scene(app->scene_manager, COGSMyKaiSceneLoadFile);

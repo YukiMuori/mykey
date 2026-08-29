@@ -3,10 +3,12 @@
 
 typedef enum {
     InfoSceneEventMenu = 1,      // Left key: back to main menu (card stays loaded)
-    InfoSceneEventAddCredit = 2, // Right key: open Add Credit
+    InfoSceneEventSetCredit = 2, // OK (center): open Set Credit
+    InfoSceneEventAddCredit = 3, // Right key: open Add Credit
 } InfoSceneEvent;
 
-// Called when the "Menu" (left key) or "Add Credit" (right key) button is pressed
+// Called when the "Menu" (left), "Set Credit" (OK/center) or
+// "Add Credit" (right) button is pressed
 static void cogs_mikai_scene_info_button_callback(
     GuiButtonType result,
     InputType type,
@@ -16,6 +18,8 @@ static void cogs_mikai_scene_info_button_callback(
     if(type == InputTypeShort) {
         if(result == GuiButtonTypeLeft) {
             view_dispatcher_send_custom_event(app->view_dispatcher, InfoSceneEventMenu);
+        } else if(result == GuiButtonTypeCenter) {
+            view_dispatcher_send_custom_event(app->view_dispatcher, InfoSceneEventSetCredit);
         } else if(result == GuiButtonTypeRight) {
             view_dispatcher_send_custom_event(app->view_dispatcher, InfoSceneEventAddCredit);
         }
@@ -128,11 +132,17 @@ void cogs_mikai_scene_info_on_enter(void* context) {
     widget_reset(widget);
 
     if(app->mykey.is_loaded) {
-        widget_add_text_scroll_element(widget, 0, 0, 128, 50, furi_string_get_cstr(text));
+        widget_add_text_scroll_element(widget, 0, 0, 128, 46, furi_string_get_cstr(text));
         widget_add_button_element(
             widget,
             GuiButtonTypeLeft,
             "Menu",
+            cogs_mikai_scene_info_button_callback,
+            app);
+        widget_add_button_element(
+            widget,
+            GuiButtonTypeCenter,
+            "Set Credit",
             cogs_mikai_scene_info_button_callback,
             app);
         widget_add_button_element(
@@ -156,6 +166,11 @@ bool cogs_mikai_scene_info_on_event(void* context, SceneManagerEvent event) {
         if(event.event == InfoSceneEventAddCredit) {
             if(app->mykey.is_loaded) {
                 scene_manager_next_scene(app->scene_manager, COGSMyKaiSceneAddCredit);
+                consumed = true;
+            }
+        } else if(event.event == InfoSceneEventSetCredit) {
+            if(app->mykey.is_loaded) {
+                scene_manager_next_scene(app->scene_manager, COGSMyKaiSceneSetCredit);
                 consumed = true;
             }
         } else if(event.event == InfoSceneEventMenu) {

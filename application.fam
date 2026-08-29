@@ -25,6 +25,7 @@ App(
         "scenes/cogs_mikai_scene_set_credit.c",
         "scenes/cogs_mikai_scene_reset.c",
         "scenes/cogs_mikai_scene_save_file.c",
+        "scenes/cogs_mikai_scene_export_history.c",
         "scenes/cogs_mikai_scene_load_file.c",
         "scenes/cogs_mikai_scene_debug.c",
         "scenes/cogs_mikai_scene_about.c",
