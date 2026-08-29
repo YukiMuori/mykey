@@ -3,6 +3,7 @@
 #include <string.h>
 #include <machine/endian.h>
 #include <storage/storage.h>
+#include <furi_hal_rtc.h>
 
 // Encode or decode a MyKey block (XOR bit manipulation)
 static inline void encode_decode_block(uint32_t* block) {
@@ -454,6 +455,75 @@ void mykey_reset(MyKeyData* key) {
     key->is_modified = true;
 }
 
+
+// Automatically back up the loaded card to SD after a successful read.
+// Uses the same file format as "Save to File", so backups can be restored
+// with "Load from File". Returns true on success.
+bool mykey_backup_to_file(COGSMyKaiApp* app) {
+    if(!app->mykey.is_loaded) {
+        return false;
+    }
+
+    const char* backup_dir = "/ext/apps_data/cogs_mikai/backup";
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    storage_simply_mkdir(storage, backup_dir);
+
+    DateTime datetime;
+    furi_hal_rtc_get_datetime(&datetime);
+
+    FuriString* file_path = furi_string_alloc();
+    furi_string_printf(
+        file_path,
+        "%s/%016llX_%04d%02d%02d_%02d%02d%02d.myk",
+        backup_dir,
+        (unsigned long long)app->mykey.uid,
+        datetime.year,
+        datetime.month,
+        datetime.day,
+        datetime.hour,
+        datetime.minute,
+        datetime.second);
+
+    File* file = storage_file_alloc(storage);
+    bool success = false;
+
+    if(storage_file_open(file, furi_string_get_cstr(file_path), FSAM_WRITE, FSOM_CREATE_ALWAYS)) {
+        const char* header = "COGES_MYKEY_V1\n";
+        storage_file_write(file, header, strlen(header));
+
+        FuriString* line = furi_string_alloc();
+        furi_string_printf(line, "UID: %016llX\n", (unsigned long long)app->mykey.uid);
+        storage_file_write(file, furi_string_get_cstr(line), furi_string_size(line));
+
+        furi_string_printf(
+            line,
+            "ENCRYPTION_KEY: %08lX\n",
+            (unsigned long)app->mykey.encryption_key);
+        storage_file_write(file, furi_string_get_cstr(line), furi_string_size(line));
+
+        for(size_t i = 0; i < SRIX4K_BLOCKS; i++) {
+            furi_string_printf(
+                line, "BLOCK_%03zu: %08lX\n", i, (unsigned long)app->mykey.eeprom[i]);
+            storage_file_write(file, furi_string_get_cstr(line), furi_string_size(line));
+        }
+
+        furi_string_free(line);
+        storage_file_close(file);
+        success = true;
+    }
+
+    storage_file_free(file);
+    furi_record_close(RECORD_STORAGE);
+
+    if(success) {
+        FURI_LOG_I(TAG, "Backup saved: %s", furi_string_get_cstr(file_path));
+    } else {
+        FURI_LOG_E(TAG, "Failed to save backup: %s", furi_string_get_cstr(file_path));
+    }
+
+    furi_string_free(file_path);
+    return success;
+}
 
 // Save raw card data to file for debugging
 bool mykey_save_raw_data(COGSMyKaiApp* app, const char* path) {

@@ -73,6 +73,11 @@ bool cogs_mikai_scene_read_on_event(void* context, SceneManagerEvent event) {
             switch(app->read_result) {
             case MyKeyReadResultOk:
                 result_timeout_ms = 1000;
+                // Automatic backup: save a copy of the card to SD so it can
+                // be restored later (Load from File). Failure is non-fatal.
+                if(!mykey_backup_to_file(app)) {
+                    FURI_LOG_W(TAG, "Automatic backup failed");
+                }
                 popup_set_header(popup, "Success!", 64, 10, AlignCenter, AlignTop);
                 popup_set_text(popup, "Card read successfully", 64, 25, AlignCenter, AlignTop);
                 notification_message(app->notifications, &sequence_success);

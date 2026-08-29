@@ -142,19 +142,19 @@ MyKeyReadResult mykey_read_from_nfc(COGSMyKaiApp* app) {
     return MyKeyReadResultOk;
 }
 
-bool mykey_write_to_nfc(COGSMyKaiApp* app) {
+MyKeyWriteResult mykey_write_to_nfc(COGSMyKaiApp* app) {
     FURI_LOG_I(TAG, "Writing to SRIX4K via NFC...");
 
     if(!app->mykey.is_loaded) {
         FURI_LOG_E(TAG, "No card data loaded, cannot write");
-        return false;
+        return MyKeyWriteResultWriteFailed;
     }
 
     // nfc_alloc() would crash the app (furi_check) if the NFC hardware is
     // busy, so check availability first and report a clean error instead.
     if(furi_hal_nfc_acquire() != FuriHalNfcErrorNone) {
         FURI_LOG_E(TAG, "NFC hardware is busy");
-        return false;
+        return MyKeyWriteResultNfcBusy;
     }
     furi_hal_nfc_release();
 
@@ -170,7 +170,7 @@ bool mykey_write_to_nfc(COGSMyKaiApp* app) {
         if(app->op_abort) {
             FURI_LOG_I(TAG, "Write aborted by user");
             nfc_free(nfc);
-            return false;
+            return MyKeyWriteResultAborted;
         }
 
         error = st25tb_poller_sync_detect_type(nfc, &type);
@@ -185,14 +185,46 @@ bool mykey_write_to_nfc(COGSMyKaiApp* app) {
     if(error != St25tbErrorNone) {
         FURI_LOG_E(TAG, "No ST25TB card detected within %u ms", MYKEY_WRITE_DETECT_TIMEOUT_MS);
         nfc_free(nfc);
-        return false;
+        return app->op_abort ? MyKeyWriteResultAborted : MyKeyWriteResultNoCard;
     }
 
     // Check if it's SRIX4K
     if(type != St25tbTypeX512 && type != St25tbType04k && type != St25tbTypeX4k) {
         FURI_LOG_E(TAG, "Card is not SRIX4K compatible, type: %d", type);
         nfc_free(nfc);
-        return false;
+        return MyKeyWriteResultUnsupportedCard;
+    }
+
+    // Protection against writing to the wrong card: unless the user already
+    // confirmed (write_force), read the card on the reader and compare its
+    // UID with the one loaded in memory. A full sync read is required, as
+    // the UID is only exposed through it.
+    if(!app->write_force) {
+        St25tbData* check_data = st25tb_alloc();
+        error = st25tb_poller_sync_read(nfc, check_data);
+        if(error != St25tbErrorNone) {
+            FURI_LOG_E(TAG, "Failed to read card UID for verification: %d", error);
+            st25tb_free(check_data);
+            nfc_free(nfc);
+            return MyKeyWriteResultWriteFailed;
+        }
+
+        // Assemble the on-reader UID in the same big-endian format used
+        // by the read path
+        uint64_t card_uid = 0;
+        for(size_t i = 0; i < ST25TB_UID_SIZE && i < 8; i++) {
+            card_uid |= ((uint64_t)check_data->uid[i]) << ((7 - i) * 8);
+        }
+        st25tb_free(check_data);
+
+        FURI_LOG_I(TAG, "Loaded UID: %016llX, card UID: %016llX",
+            (unsigned long long)app->mykey.uid, (unsigned long long)card_uid);
+
+        if(card_uid != app->mykey.uid) {
+            FURI_LOG_W(TAG, "UID mismatch: card on reader is not the loaded card");
+            nfc_free(nfc);
+            return MyKeyWriteResultUidMismatch;
+        }
     }
 
     size_t num_blocks = st25tb_get_block_count(type);
@@ -229,5 +261,5 @@ bool mykey_write_to_nfc(COGSMyKaiApp* app) {
 
     nfc_free(nfc);
 
-    return success;
+    return success ? MyKeyWriteResultOk : MyKeyWriteResultWriteFailed;
 }

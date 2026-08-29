@@ -66,6 +66,17 @@ typedef enum {
     MyKeyReadResultAborted,         // Operation cancelled by the user
 } MyKeyReadResult;
 
+// Result of a Write Card operation.
+typedef enum {
+    MyKeyWriteResultOk = 0,
+    MyKeyWriteResultNoCard,          // No card detected within the timeout
+    MyKeyWriteResultUnsupportedCard, // Card detected, but not SRIX4K-compatible
+    MyKeyWriteResultUidMismatch,     // Card on reader differs from the loaded one
+    MyKeyWriteResultWriteFailed,     // Card detected, but the write failed
+    MyKeyWriteResultNfcBusy,         // NFC hardware not available
+    MyKeyWriteResultAborted,         // Operation cancelled by the user
+} MyKeyWriteResult;
+
 typedef struct {
     Gui* gui;
     ViewDispatcher* view_dispatcher;
@@ -88,7 +99,8 @@ typedef struct {
     FuriThread* write_thread;
     volatile bool op_abort;
     MyKeyReadResult read_result;
-    bool write_result;
+    MyKeyWriteResult write_result;
+    bool write_force; // Skip the UID mismatch check (user confirmed the write)
 } COGSMyKaiApp;
 
 // Scene handler function declarations
@@ -141,7 +153,8 @@ extern const SceneManagerHandlers cogs_mikai_scene_handlers;
 
 // MyKey operations
 MyKeyReadResult mykey_read_from_nfc(COGSMyKaiApp* app);
-bool mykey_write_to_nfc(COGSMyKaiApp* app);
+MyKeyWriteResult mykey_write_to_nfc(COGSMyKaiApp* app);
+bool mykey_backup_to_file(COGSMyKaiApp* app);
 void mykey_calculate_encryption_key(MyKeyData* key);
 bool mykey_is_reset(MyKeyData* key);
 uint16_t mykey_get_current_credit(MyKeyData* key);
