@@ -1,9 +1,25 @@
 #include "../cogs_mikai.h"
 #include <machine/endian.h>
 
+typedef enum {
+    InfoSceneEventAddCredit = 1,
+} InfoSceneEvent;
+
+// Called when the "Add Credit" button (right key) is pressed
+static void cogs_mikai_scene_info_button_callback(
+    GuiButtonType result,
+    InputType type,
+    void* context) {
+    UNUSED(result);
+    COGSMyKaiApp* app = context;
+
+    if(type == InputTypeShort) {
+        view_dispatcher_send_custom_event(app->view_dispatcher, InfoSceneEventAddCredit);
+    }
+}
+
 void cogs_mikai_scene_info_on_enter(void* context) {
     COGSMyKaiApp* app = context;
-    TextBox* text_box = app->text_box;
     FuriString* text = app->text_box_store;
 
     furi_string_reset(text);
@@ -21,7 +37,7 @@ void cogs_mikai_scene_info_on_enter(void* context) {
         mykey_encode_decode_block(&block18);
         mykey_encode_decode_block(&block19);
         uint64_t vendor = (((uint64_t)block18 << 16) | (block19 & 0x0000FFFF)) + 1;
-  
+
         furi_string_cat_printf(text, "Vendor: %llX\n", vendor);
 
         // current credit
@@ -100,21 +116,42 @@ void cogs_mikai_scene_info_on_enter(void* context) {
         }
     }
 
-    text_box_set_text(text_box, furi_string_get_cstr(text));
-    text_box_set_font(text_box, TextBoxFontText);
-    text_box_set_focus(text_box, TextBoxFocusStart);
+    // Show the info as a scrollable text; with a card loaded, a
+    // "Add Credit" button appears at the bottom right (right key)
+    Widget* widget = app->widget;
+    widget_reset(widget);
 
-    view_dispatcher_switch_to_view(app->view_dispatcher, COGSMyKaiViewTextBox);
+    if(app->mykey.is_loaded) {
+        widget_add_text_scroll_element(widget, 0, 0, 128, 50, furi_string_get_cstr(text));
+        widget_add_button_element(
+            widget,
+            GuiButtonTypeRight,
+            "Add Credit",
+            cogs_mikai_scene_info_button_callback,
+            app);
+    } else {
+        widget_add_text_scroll_element(widget, 0, 0, 128, 64, furi_string_get_cstr(text));
+    }
+
+    view_dispatcher_switch_to_view(app->view_dispatcher, COGSMyKaiViewWidget);
 }
 
 bool cogs_mikai_scene_info_on_event(void* context, SceneManagerEvent event) {
-    UNUSED(context);
-    UNUSED(event);
-    return false;
+    COGSMyKaiApp* app = context;
+    bool consumed = false;
+
+    if(event.type == SceneManagerEventTypeCustom && event.event == InfoSceneEventAddCredit) {
+        if(app->mykey.is_loaded) {
+            scene_manager_next_scene(app->scene_manager, COGSMyKaiSceneAddCredit);
+            consumed = true;
+        }
+    }
+
+    return consumed;
 }
 
 void cogs_mikai_scene_info_on_exit(void* context) {
     COGSMyKaiApp* app = context;
-    text_box_reset(app->text_box);
+    widget_reset(app->widget);
     furi_string_reset(app->text_box_store);
 }

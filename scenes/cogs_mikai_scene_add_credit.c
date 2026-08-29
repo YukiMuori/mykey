@@ -104,7 +104,7 @@ static void cogs_mikai_scene_add_credit_popup_callback(void* context) {
     view_dispatcher_send_custom_event(app->view_dispatcher, AddCreditEventClose);
 }
 
-// Add the given amount to the card, then ask whether to write it right away
+// Add the given amount to the card, then jump straight to the write scene
 static void cogs_mikai_scene_add_credit_apply(COGSMyKaiApp* app, uint16_t cents) {
     DateTime datetime;
     furi_hal_rtc_get_datetime(&datetime);
@@ -133,21 +133,9 @@ static void cogs_mikai_scene_add_credit_apply(COGSMyKaiApp* app, uint16_t cents)
 
     notification_message(app->notifications, &sequence_success);
 
-    // Ask whether to write to the card right away
-    DialogMessage* message = dialog_message_alloc();
-    dialog_message_set_header(message, "Credit Added!", 64, 0, AlignCenter, AlignTop);
-    dialog_message_set_text(message, "Write to card now?", 64, 28, AlignCenter, AlignTop);
-    dialog_message_set_buttons(message, "Later", NULL, "Write");
-    DialogMessageButton button = dialog_message_show(app->dialogs, message);
-    dialog_message_free(message);
-
-    if(button == DialogMessageButtonRight) {
-        // Write immediately: the write scene waits for the card and writes
-        scene_manager_next_scene(app->scene_manager, COGSMyKaiSceneWriteCard);
-    } else {
-        // Stay here to add more amounts; Back returns to the menu
-        view_dispatcher_switch_to_view(app->view_dispatcher, COGSMyKaiViewSubmenu);
-    }
+    // Write straight away: the write scene waits for the card and writes.
+    // Pressing Back there cancels the write (the credit stays in memory).
+    scene_manager_next_scene(app->scene_manager, COGSMyKaiSceneWriteCard);
 }
 
 void cogs_mikai_scene_add_credit_on_enter(void* context) {
@@ -244,9 +232,8 @@ bool cogs_mikai_scene_add_credit_on_event(void* context, SceneManagerEvent event
             }
             consumed = true;
         } else if(event.event == AddCreditEventClose) {
-            // Result popup dismissed: back to start scene (rebuilds menu)
-            scene_manager_search_and_switch_to_previous_scene(
-                app->scene_manager, COGSMyKaiSceneStart);
+            // Error popup dismissed: back to the amount list to retry
+            view_dispatcher_switch_to_view(app->view_dispatcher, COGSMyKaiViewSubmenu);
             consumed = true;
         }
     } else if(event.type == SceneManagerEventTypeBack) {
